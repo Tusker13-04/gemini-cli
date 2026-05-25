@@ -185,7 +185,7 @@ export const DEFAULT_MODEL_CONFIGS: ModelConfigServiceConfig = {
     'summarizer-default': {
       extends: 'base',
       modelConfig: {
-        model: 'gemini-2.5-flash-lite',
+        model: 'gemini-3.5-flash',
         generateContentConfig: {
           maxOutputTokens: 2000,
         },
@@ -194,7 +194,7 @@ export const DEFAULT_MODEL_CONFIGS: ModelConfigServiceConfig = {
     'summarizer-shell': {
       extends: 'base',
       modelConfig: {
-        model: 'gemini-2.5-flash-lite',
+        model: 'gemini-3.5-flash',
         generateContentConfig: {
           maxOutputTokens: 2000,
         },
@@ -254,12 +254,12 @@ export const DEFAULT_MODEL_CONFIGS: ModelConfigServiceConfig = {
     },
     'chat-compression-3-pro': {
       modelConfig: {
-        model: 'gemini-3-pro-preview',
+        model: 'gemini-3.1-flash-lite-preview',
       },
     },
     'chat-compression-3-flash': {
       modelConfig: {
-        model: 'gemini-3-flash-preview',
+        model: 'gemini-3.1-flash-lite-preview',
       },
     },
     'chat-compression-3.1-flash-lite': {
@@ -269,27 +269,27 @@ export const DEFAULT_MODEL_CONFIGS: ModelConfigServiceConfig = {
     },
     'chat-compression-2.5-pro': {
       modelConfig: {
-        model: 'gemini-2.5-pro',
+        model: 'gemini-3.1-flash-lite-preview',
       },
     },
     'chat-compression-2.5-flash': {
       modelConfig: {
-        model: 'gemini-2.5-flash',
+        model: 'gemini-3.1-flash-lite-preview',
       },
     },
     'chat-compression-2.5-flash-lite': {
       modelConfig: {
-        model: 'gemini-2.5-flash-lite',
+        model: 'gemini-3.1-flash-lite-preview',
       },
     },
     'chat-compression-default': {
       modelConfig: {
-        model: 'gemini-3-pro-preview',
+        model: 'gemini-3.1-flash-lite-preview',
       },
     },
     'agent-history-provider-summarizer': {
       modelConfig: {
-        model: 'gemini-3-flash-preview',
+        model: 'gemini-3.5-flash',
       },
     },
   },
