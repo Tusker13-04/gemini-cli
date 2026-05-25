@@ -28,6 +28,7 @@ import {
   DEFAULT_GEMINI_FLASH_MODEL,
   DEFAULT_GEMINI_MODEL,
   PREVIEW_GEMINI_MODEL,
+  PREVIEW_GEMINI_3_1_CUSTOM_TOOLS_MODEL,
   PREVIEW_GEMINI_FLASH_MODEL,
   PREVIEW_GEMINI_3_1_MODEL,
   PREVIEW_GEMINI_3_1_FLASH_LITE_MODEL,
@@ -104,6 +105,8 @@ export function modelStringToModelConfigAlias(model: string): string {
     case PREVIEW_GEMINI_MODEL:
     case PREVIEW_GEMINI_3_1_MODEL:
       return 'chat-compression-3-pro';
+    case PREVIEW_GEMINI_3_1_CUSTOM_TOOLS_MODEL:
+      return 'chat-compression-3-flash';
     case PREVIEW_GEMINI_FLASH_MODEL:
       return 'chat-compression-3-flash';
     case PREVIEW_GEMINI_3_1_FLASH_LITE_MODEL:
@@ -117,6 +120,12 @@ export function modelStringToModelConfigAlias(model: string): string {
     default:
       return 'chat-compression-default';
   }
+}
+
+function getCompressionRole(model: string): LlmRole {
+  return model === PREVIEW_GEMINI_3_1_CUSTOM_TOOLS_MODEL
+    ? LlmRole.UTILITY_SUMMARIZER
+    : LlmRole.UTILITY_COMPRESSOR;
 }
 
 /**
@@ -355,6 +364,11 @@ export class ChatCompressionService {
     const anchorInstruction = hasPreviousSnapshot
       ? 'A previous <state_snapshot> exists in the history. You MUST integrate all still-relevant information from that snapshot into the new one, updating it with the more recent events. Do not lose established constraints or critical knowledge.'
       : 'Generate a new <state_snapshot> based on the provided history.';
+    const compressionRole = getCompressionRole(model);
+    const compressionPrompt =
+      model === PREVIEW_GEMINI_3_1_CUSTOM_TOOLS_MODEL
+        ? `${anchorInstruction}\n\nSummarize the previous conversation into an updated <state_snapshot>. Keep goals, constraints, completed actions, and pending work. Return ONLY the <state_snapshot>.`
+        : `${anchorInstruction}\n\nFirst, reason in your scratchpad. Then, generate the updated <state_snapshot>.`;
 
     const summaryResponse = await config.getBaseLlmClient().generateContent({
       modelConfigKey: { model: modelStringToModelConfigAlias(model) },
@@ -364,7 +378,7 @@ export class ChatCompressionService {
           role: 'user',
           parts: [
             {
-              text: `${anchorInstruction}\n\nFirst, reason in your scratchpad. Then, generate the updated <state_snapshot>.`,
+              text: compressionPrompt,
             },
           ],
         },
@@ -373,7 +387,7 @@ export class ChatCompressionService {
       promptId,
       // TODO(joshualitt): wire up a sensible abort signal,
       abortSignal: abortSignal ?? new AbortController().signal,
-      role: LlmRole.UTILITY_COMPRESSOR,
+      role: compressionRole,
     });
     const summary = getResponseText(summaryResponse) ?? '';
 
@@ -400,7 +414,7 @@ export class ChatCompressionService {
         ],
         systemInstruction: { text: getCompressionPrompt(config) },
         promptId: `${promptId}-verify`,
-        role: LlmRole.UTILITY_COMPRESSOR,
+        role: compressionRole,
         abortSignal: abortSignal ?? new AbortController().signal,
       });
 

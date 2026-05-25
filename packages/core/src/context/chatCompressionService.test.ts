@@ -24,6 +24,8 @@ import { tokenLimit } from '../core/tokenLimits.js';
 import os from 'node:os';
 import path from 'node:path';
 import fs from 'node:fs';
+import { PREVIEW_GEMINI_3_1_CUSTOM_TOOLS_MODEL } from '../config/models.js';
+import { LlmRole } from '../telemetry/types.js';
 
 vi.mock('../telemetry/loggers.js');
 vi.mock('../utils/environmentContext.js');
@@ -120,6 +122,9 @@ describe('modelStringToModelConfigAlias', () => {
     expect(modelStringToModelConfigAlias('gemini-3-pro-preview')).toBe(
       'chat-compression-3-pro',
     );
+    expect(
+      modelStringToModelConfigAlias(PREVIEW_GEMINI_3_1_CUSTOM_TOOLS_MODEL),
+    ).toBe('chat-compression-3-flash');
     expect(modelStringToModelConfigAlias('gemini-2.5-pro')).toBe(
       'chat-compression-2.5-pro',
     );
@@ -137,6 +142,7 @@ describe('ChatCompressionService', () => {
   let mockChat: GeminiChat;
   let mockConfig: Config;
   let testTempDir: string;
+  let mockGenerateContent: ReturnType<typeof vi.fn>;
   const mockModel = 'gemini-2.5-pro';
   const mockPromptId = 'test-prompt-id';
 
@@ -150,7 +156,7 @@ describe('ChatCompressionService', () => {
       getLastPromptTokenCount: vi.fn().mockReturnValue(500),
     } as unknown as GeminiChat;
 
-    const mockGenerateContent = vi
+    mockGenerateContent = vi
       .fn()
       .mockResolvedValueOnce({
         candidates: [
@@ -290,6 +296,38 @@ describe('ChatCompressionService', () => {
     expect(mockConfig.getBaseLlmClient().generateContent).toHaveBeenCalledTimes(
       2,
     );
+  });
+
+  it('uses flash summarizer role for customtools model compression', async () => {
+    const history: Content[] = [
+      { role: 'user', parts: [{ text: 'msg1' }] },
+      { role: 'model', parts: [{ text: 'msg2' }] },
+      { role: 'user', parts: [{ text: 'msg3' }] },
+      { role: 'model', parts: [{ text: 'msg4' }] },
+    ];
+    vi.mocked(mockChat.getHistory).mockReturnValue(history);
+    vi.mocked(mockChat.getLastPromptTokenCount).mockReturnValue(600000);
+
+    await service.compress(
+      mockChat,
+      mockPromptId,
+      false,
+      PREVIEW_GEMINI_3_1_CUSTOM_TOOLS_MODEL,
+      mockConfig,
+      false,
+    );
+
+    const firstCall = mockGenerateContent.mock.calls[0]?.[0];
+    const secondCall = mockGenerateContent.mock.calls[1]?.[0];
+
+    expect(firstCall?.modelConfigKey).toEqual({
+      model: 'chat-compression-3-flash',
+    });
+    expect(firstCall?.role).toBe(LlmRole.UTILITY_SUMMARIZER);
+    expect(
+      firstCall?.contents?.[firstCall.contents.length - 1]?.parts?.[0]?.text,
+    ).toContain('Summarize the previous conversation');
+    expect(secondCall?.role).toBe(LlmRole.UTILITY_SUMMARIZER);
   });
 
   it('should fall back to initial summary if verification response is empty', async () => {
